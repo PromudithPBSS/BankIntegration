@@ -2,9 +2,11 @@
   "name": "bank-integration",
   "version": "1.0.0",
   "private": true,
-  "description": "Bank integration helpers (OAuth2 token + doSampathTran) for the CAP event handler",
-  "main": "lib/bankApiClient.js",
+  "description": "Self-polling background worker that fetches payments from S/4HANA, dedups against a local JSON DB, and submits new transactions via doSampathTran",
+  "main": "srv/bankIntegration.js",
   "scripts": {
+    "start": "node srv/bankIntegration.js",
+    "worker": "node srv/bankIntegration.js",
     "test:token": "node scripts/test-token.js",
     "test:bank": "node scripts/test-bank-transaction.js"
   },
