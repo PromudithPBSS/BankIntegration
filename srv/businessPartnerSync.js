@@ -64,7 +64,6 @@ async function fetchBusinessPartners() {
 
   const partners = response.data?.d?.results || response.data?.value || []
   log.info(`S/4HANA returned ${partners.length} business partner(s).`)
-  log.debug('S/4HANA business partner response:', response.data)
   return partners
 }
 
