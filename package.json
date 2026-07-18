@@ -4,6 +4,14 @@
   "private": true,
   "description": "Self-polling background worker that fetches payments from S/4HANA, dedups against a local JSON DB, and submits new transactions via doSampathTran",
   "main": "srv/bankIntegration.js",
+  "cds": {
+    "requires": {
+      "db": {
+        "kind": "hana",
+        "model": ["db"]
+      }
+    }
+  },
   "scripts": {
     "start": "node srv/bankIntegration.js",
     "worker": "node srv/bankIntegration.js",
