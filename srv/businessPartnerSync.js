@@ -2,7 +2,6 @@ require('dotenv').config()
 
 const axios = require('axios')
 const cds = require('@sap/cds')
-const { UPSERT } = cds.ql
 const log = require('./logger')
 
 const S4_BUSINESS_PARTNER_API_URL = process.env.S4_BUSINESS_PARTNER_API_URL
@@ -35,16 +34,24 @@ function preferredValue(rows, valueField, defaultField) {
 }
 
 function toBusinessPartnerRecord(partner = {}) {
-  const emails = expandedRows(partner.to_AddressIndependentEmail)
+  const emails  = expandedRows(partner.to_AddressIndependentEmail)
   const mobiles = expandedRows(partner.to_AddressIndependentMobile)
+  const banks   = expandedRows(partner.to_BusinessPartnerBank)
+
+  // Prefer the Sampath Bank entry (BankNumber 7278); fall back to the first available
+  const targetBankCode = process.env.BANK_DEFAULT_BANK_CODE || '7278'
+  const defaultBank =
+    banks.find((b) => b.BankNumber === targetBankCode) || banks[0]
 
   return {
     businessPartnerId: partner.BusinessPartner,
-    fullName: partner.BusinessPartnerFullName || null,
-    email: preferredValue(emails, 'EmailAddress', 'IsDefaultEmailAddress'),
+    fullName:      partner.BusinessPartnerFullName || null,
+    email:         preferredValue(emails, 'EmailAddress', 'IsDefaultEmailAddress'),
     mobileNumber:
       preferredValue(mobiles, 'InternationalPhoneNumber', 'IsDefaultPhoneNumber') ||
-      preferredValue(mobiles, 'PhoneNumber', 'IsDefaultPhoneNumber')
+      preferredValue(mobiles, 'PhoneNumber', 'IsDefaultPhoneNumber'),
+    accountNumber: defaultBank?.BankAccount      || null,
+    bankCode:      defaultBank?.BankNumber        || null
   }
 }
 
@@ -57,8 +64,7 @@ async function fetchBusinessPartners() {
     auth: { username: S4_USER, password: S4_PASSWORD },
     headers: { Accept: 'application/json' },
     params: {
-      '$select': 'BusinessPartner,BusinessPartnerFullName',
-      '$expand': 'to_AddressIndependentEmail,to_AddressIndependentMobile'
+      '$expand': 'to_AddressIndependentEmail,to_AddressIndependentMobile,to_BusinessPartnerBank'
     }
   })
 
@@ -70,7 +76,7 @@ async function fetchBusinessPartners() {
 async function syncBusinessPartners() {
   log.info(`Fetching business partners from S/4HANA: ${S4_BUSINESS_PARTNER_API_URL}`)
   const partners = await fetchBusinessPartners()
-  const records = partners.map(toBusinessPartnerRecord).filter((partner) => partner.businessPartnerId)
+  const records = partners.map(toBusinessPartnerRecord).filter((p) => p.businessPartnerId)
 
   if (records.length === 0) {
     log.info('No business partners returned by S/4HANA.')
@@ -78,8 +84,11 @@ async function syncBusinessPartners() {
   }
 
   const db = await cds.connect.to('db')
-  await db.run(UPSERT.into('my.bankintegration.BusinessPartner').entries(records))
-  log.info(`Upserted ${records.length} business partner(s) into the SQL database.`)
+  // Delete all existing records and re-insert — safe for a full sync
+  // (avoids @cap-js/sqlite UPSERT bug with UNIQUE constraints)
+  await db.delete('my.bankintegration.BusinessPartner')
+  await db.insert(records).into('my.bankintegration.BusinessPartner')
+  log.info(`Synced ${records.length} business partner(s) into the local SQLite database.`)
   return records.length
 }
 

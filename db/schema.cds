@@ -13,9 +13,14 @@ entity BusinessPartner : managed {
 }
 
 entity Transaction : cuid, managed {
+    externalId      : String(100);  // S/4HANA unique ID — used for dedup
+    fromAccNumber   : String(30);
+    toAccNumber     : String(30);
+    beneficiaryName : String(255);
     amount          : Decimal(15, 2);
     currency        : String(3);
     postingDate     : Date;
-    status          : String(20); // e.g., 'Pending', 'Completed', 'Failed'
+    status          : String(20);   // 'Pending' | 'Completed' | 'Failed'
+    bankResponse    : LargeString;  // raw JSON response stored on success
     businessPartner : Association to BusinessPartner;
 }

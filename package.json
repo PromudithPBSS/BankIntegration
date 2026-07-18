@@ -7,8 +7,10 @@
   "cds": {
     "requires": {
       "db": {
-        "kind": "hana",
-        "model": ["db"]
+        "kind": "sqlite",
+        "credentials": {
+          "url": "db.sqlite"
+        }
       }
     }
   },
