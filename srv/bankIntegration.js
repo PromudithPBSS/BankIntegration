@@ -72,7 +72,7 @@ function toTransactionPayload(payment = {}, bp = null) {
     beneficiaryName:  bp?.fullName                     || payment.PayFnPayeeName,
     beneficiaryMob:   '0765451161',
     beneficiaryEmail: 'test@mail.com',
-    amount:           payment.PayFnTransactionAmount,
+    amount:           Math.abs(payment.PayFnTransactionAmount),
     remark:           payment.PayFnCatPurposeCodeDesc,
     bankCode:         process.env.BANK_DEFAULT_BANK_CODE || '7278'
   }
