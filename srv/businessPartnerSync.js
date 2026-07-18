@@ -9,6 +9,20 @@ const S4_BUSINESS_PARTNER_API_URL = process.env.S4_BUSINESS_PARTNER_API_URL
 const S4_USER = process.env.S4_USER
 const S4_PASSWORD = process.env.S4_PASSWORD
 
+function logSyncError(error) {
+  if (error.response) {
+    log.error('S/4HANA business partner request failed:', {
+      status: error.response.status,
+      statusText: error.response.statusText,
+      headers: error.response.headers,
+      data: error.response.data
+    })
+    return
+  }
+
+  log.error('Business partner synchronization failed:', error.stack || error.message || error)
+}
+
 function expandedRows(value) {
   if (Array.isArray(value)) return value
   if (Array.isArray(value?.results)) return value.results
@@ -48,7 +62,10 @@ async function fetchBusinessPartners() {
     }
   })
 
-  return response.data?.d?.results || response.data?.value || []
+  const partners = response.data?.d?.results || response.data?.value || []
+  log.info(`S/4HANA returned ${partners.length} business partner(s).`)
+  log.debug('S/4HANA business partner response:', response.data)
+  return partners
 }
 
 async function syncBusinessPartners() {
@@ -69,9 +86,9 @@ async function syncBusinessPartners() {
 
 if (require.main === module) {
   syncBusinessPartners().catch((error) => {
-    log.error('Business partner synchronization failed:', error)
+    logSyncError(error)
     process.exitCode = 1
   })
 }
 
-module.exports = { fetchBusinessPartners, syncBusinessPartners, toBusinessPartnerRecord }
+module.exports = { fetchBusinessPartners, logSyncError, syncBusinessPartners, toBusinessPartnerRecord }
